@@ -1,0 +1,8 @@
+apiVersion: arnecdn.github.com/v1
+kind: KafkaTopic
+metadata:
+  name: greeting-kafka-topic
+spec:
+    topic: greetings
+    partitions: 10
+    bootstrap-server: kafka-0:9092

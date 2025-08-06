@@ -4,10 +4,10 @@ use kube::{Api, Client, Resource, ResourceExt};
 use kube::runtime::{finalizer, Controller};
 use kube::runtime::controller::Action;
 use kube::runtime::watcher::Config;
-use crate::greeting_topic::KafkaTopic;
+use crate::kafka_topic::KafkaTopic;
 use tokio::time::Duration;
 
-mod greeting_topic;
+mod kafka_topic;
 
 #[tokio::main]
 async fn main() {
@@ -31,7 +31,7 @@ async fn main() {
         .run(reconcile, on_error, context)
         .for_each(|reconciliation_result| async move {
             match reconciliation_result {
-                Ok(echo_resource) => {
+                    Ok(echo_resource) => {
                     println!("Reconciliation successful. Resource: {:?}", echo_resource);
                 }
                 Err(reconciliation_err) => {
@@ -100,9 +100,9 @@ async fn reconcile(kafkaTopic: Arc<KafkaTopic>, context: Arc<ContextData>) -> Re
 
             // Apply the finalizer first. If that fails, the `?` operator invokes automatic conversion
             // of `kube::Error` to the `Error` defined in this crate.
-            greeting_topic::finalizer_add(client.clone(), &name, &namespace).await?;
+            kafka_topic::finalizer_add(client.clone(), &name, &namespace).await?;
             // Invoke creation of a Kubernetes built-in resource named deployment with `n` echo service pods.
-            greeting_topic::deploy(client, &name, kafkaTopic.spec.replicas, &namespace).await?;
+            kafka_topic::deploy(client, &name, kafkaTopic.spec.partitions, &namespace).await?;
             Ok(Action::requeue(Duration::from_secs(10)))
         }
         KafkaTopicAction::Delete => {
@@ -113,11 +113,11 @@ async fn reconcile(kafkaTopic: Arc<KafkaTopic>, context: Arc<ContextData>) -> Re
             // automatically converted into `Error` defined in this crate and the reconciliation is ended
             // with that error.
             // Note: A more advanced implementation would check for the Deployment's existence.
-            greeting_topic::finalizer_delete(client.clone(), &name, &namespace).await?;
+            kafka_topic::finalizer_delete(client.clone(), &name, &namespace).await?;
 
             // Once the deployment is successfully removed, remove the finalizer to make it possible
             // for Kubernetes to delete the `Echo` resource.
-            greeting_topic::finalizer_delete(client, &name, &namespace).await?;
+            kafka_topic::finalizer_delete(client, &name, &namespace).await?;
             Ok(Action::await_change()) // Makes no sense to delete after a successful delete, as the resource is gone
         }
         // The resource is already in desired state, do nothing and re-check after 10 seconds

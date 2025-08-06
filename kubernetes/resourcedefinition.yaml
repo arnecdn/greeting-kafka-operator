@@ -24,7 +24,7 @@ spec:
                   type: string
                 partitions:
                   type: integer
-                bootstrap-server:
+                bootstrapServer:
                   type: string
   # either Namespaced or Cluster
   scope: Namespaced

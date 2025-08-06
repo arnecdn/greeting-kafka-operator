@@ -17,7 +17,9 @@ use serde_json::{json, Value};
     namespaced
 )]
 pub struct KafkaTopicSpec {
-    pub replicas: i32,
+    pub bootstrapServer: String,
+    pub topic: String,
+    pub partitions: i32,
 }
 
 pub async fn deploy(
@@ -86,33 +88,33 @@ pub async fn delete_topic(client: Client, name: &str, namespace: &str) -> Result
     Ok(())
 }
 
-/// Adds a finalizer record into an `Echo` kind of resource. If the finalizer already exists,
+/// Adds a finalizer record into an `KafkaTopic` kind of resource. If the finalizer already exists,
 /// this action has no effect.
 ///
 /// # Arguments:
-/// - `client` - Kubernetes client to modify the `Echo` resource with.
-/// - `name` - Name of the `Echo` resource to modify. Existence is not verified
-/// - `namespace` - Namespace where the `Echo` resource with given `name` resides.
+/// - `client` - Kubernetes client to modify the `KafkaTopic` resource with.
+/// - `name` - Name of the `KafkaTopic` resource to modify. Existence is not verified
+/// - `namespace` - Namespace where the `KafkaTopic` resource with given `name` resides.
 ///
 /// Note: Does not check for resource's existence for simplicity.
 pub async fn finalizer_add(client: Client, name: &str, namespace: &str) -> Result<KafkaTopic, Error> {
     let api: Api<KafkaTopic> = Api::namespaced(client, namespace);
     let finalizer: Value = json!({
         "metadata": {
-            "finalizers": ["echoes.example.com/finalizer"]
+            "finalizers": ["arnecdn.github.com/finalizer"]
         }
     });
 
     let patch: Patch<&Value> = Patch::Merge(&finalizer);
     api.patch(name, &PatchParams::default(), &patch).await
 }
-/// Removes all finalizers from an `Echo` resource. If there are no finalizers already, this
+/// Removes all finalizers from an `KafkaTopic` resource. If there are no finalizers already, this
 /// action has no effect.
 ///
 /// # Arguments:
-/// - `client` - Kubernetes client to modify the `Echo` resource with.
-/// - `name` - Name of the `Echo` resource to modify. Existence is not verified
-/// - `namespace` - Namespace where the `Echo` resource with given `name` resides.
+/// - `client` - Kubernetes client to modify the `KafkaTopic` resource with.
+/// - `name` - Name of the `KafkaTopic` resource to modify. Existence is not verified
+/// - `namespace` - Namespace where the `KafkaTopic` resource with given `name` resides.
 ///
 /// Note: Does not check for resource's existence for simplicity.
 pub async fn finalizer_delete(client: Client, name: &str, namespace: &str) -> Result<KafkaTopic, Error> {

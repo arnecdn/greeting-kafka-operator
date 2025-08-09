@@ -20,7 +20,6 @@ async fn main() {
     // Preparation of resources used by the `kube_runtime::Controller`
     let crd_api: Api<KafkaTopic> = Api::all(kubernetes_client.clone());
     let context: Arc<ContextData> = Arc::new(ContextData::new(kubernetes_client.clone()));
-
     // The controller comes from the `kube_runtime` crate and manages the reconciliation process.
     // It requires the following information:
     // - `kube::Api<T>` this controller "owns". In this case, `T = Echo`, as this controller owns the `Echo` resource,
@@ -102,7 +101,8 @@ async fn reconcile(kafkaTopic: Arc<KafkaTopic>, context: Arc<ContextData>) -> Re
             // of `kube::Error` to the `Error` defined in this crate.
             kafka_topic::finalizer_add(client.clone(), &name, &namespace).await?;
             // Invoke creation of a Kubernetes built-in resource named deployment with `n` echo service pods.
-            kafka_topic::deploy(client, &name, kafkaTopic.spec.partitions, &namespace).await?;
+            // kafka_topic::deploy(client, &name, kafkaTopic.spec.partitions, &namespace).await?;
+            kafka_topic::create_topic(kafkaTopic).await?;
             Ok(Action::requeue(Duration::from_secs(10)))
         }
         KafkaTopicAction::Delete => {

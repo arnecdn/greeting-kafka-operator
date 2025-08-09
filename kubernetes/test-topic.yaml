@@ -1,0 +1,8 @@
+apiVersion: arnecdn.github.com/v1
+kind: KafkaTopic
+metadata:
+  name: test-kafka-topic
+spec:
+    topic: test-topic
+    partitions: 1
+    bootstrapServer: kafka-0:9092

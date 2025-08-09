@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use k8s_openapi::api::apps::v1::{Deployment, DeploymentSpec};
 use k8s_openapi::api::core::v1::{Container, ContainerPort, PodSpec, PodTemplateSpec};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
@@ -6,6 +7,7 @@ use kube::{Client, CustomResource, Api, Error};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use kube::api::{DeleteParams, Patch, PatchParams, PostParams};
+use rdkafka::ClientConfig;
 use serde_json::{json, Value};
 #[derive(CustomResource, Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
 #[kube(
@@ -20,6 +22,34 @@ pub struct KafkaTopicSpec {
     pub bootstrapServer: String,
     pub topic: String,
     pub partitions: i32,
+}
+
+// Creates a Kafka topic (placeholder, as topic creation is typically done via admin tools)
+pub async fn create_topic(kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>{
+    // Implement topic creation logic here if using Kafka Admin API
+    use rdkafka::admin::{AdminClient, AdminOptions, NewTopic, TopicReplication};
+    use rdkafka::client::DefaultClientContext;
+
+    let admin: AdminClient<DefaultClientContext> = ClientConfig::new()
+        .set("bootstrap.servers", kafka_topic.spec.bootstrapServer.clone())
+        .create()
+        .expect("Admin client creation failed");
+
+    let new_topics = vec![NewTopic::new(&*kafka_topic.spec.topic, kafka_topic.spec.partitions, TopicReplication::Fixed(1))];
+    let res = admin.create_topics(&new_topics, &AdminOptions::new());
+
+    match futures::executor::block_on(res) {
+        Ok(results) => {
+            for r in results {
+                match r {
+                    Ok(topic) => println!("Created topic: {}", topic),
+                    Err((topic, err)) => println!("Failed to create topic {}: {:?}", topic, err),
+                }
+            }
+        }
+        Err(e) => println!("Admin operation failed: {:?}", e),
+    }
+    Ok(())
 }
 
 pub async fn deploy(

@@ -1,14 +1,17 @@
-use std::collections::BTreeMap;
-use std::sync::Arc;
 use k8s_openapi::api::apps::v1::{Deployment, DeploymentSpec};
 use k8s_openapi::api::core::v1::{Container, ContainerPort, PodSpec, PodTemplateSpec};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
-use kube::{Client, CustomResource, Api, Error};
+use kube::api::{DeleteParams, Patch, PatchParams, PostParams};
+use kube::{Api, Client, CustomResource, Error};
+use rdkafka::admin::{AdminClient, AdminOptions, NewTopic, TopicReplication};
+use rdkafka::client::DefaultClientContext;
+use rdkafka::ClientConfig;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use kube::api::{DeleteParams, Patch, PatchParams, PostParams};
-use rdkafka::ClientConfig;
 use serde_json::{json, Value};
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
 #[derive(CustomResource, Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
 #[kube(
     group = "arnecdn.github.com",
@@ -25,17 +28,22 @@ pub struct KafkaTopicSpec {
 }
 
 // Creates a Kafka topic (placeholder, as topic creation is typically done via admin tools)
-pub async fn create_topic(kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>{
+pub async fn create_topic(kafka_topic: Arc<KafkaTopic>) -> Result<(), Error> {
     // Implement topic creation logic here if using Kafka Admin API
-    use rdkafka::admin::{AdminClient, AdminOptions, NewTopic, TopicReplication};
-    use rdkafka::client::DefaultClientContext;
 
     let admin: AdminClient<DefaultClientContext> = ClientConfig::new()
-        .set("bootstrap.servers", kafka_topic.spec.bootstrapServer.clone())
+        .set(
+            "bootstrap.servers",
+            kafka_topic.spec.bootstrapServer.clone(),
+        )
         .create()
         .expect("Admin client creation failed");
 
-    let new_topics = vec![NewTopic::new(&*kafka_topic.spec.topic, kafka_topic.spec.partitions, TopicReplication::Fixed(1))];
+    let new_topics = vec![NewTopic::new(
+        &*kafka_topic.spec.topic,
+        kafka_topic.spec.partitions,
+        TopicReplication::Fixed(1),
+    )];
     let res = admin.create_topics(&new_topics, &AdminOptions::new());
 
     match futures::executor::block_on(res) {
@@ -52,58 +60,6 @@ pub async fn create_topic(kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>{
     Ok(())
 }
 
-pub async fn deploy(
-    client: Client,
-    name: &str,
-    replicas: i32,
-    namespace: &str,
-) -> Result<Deployment, Error> {
-    let mut labels: BTreeMap<String, String> = BTreeMap::new();
-    labels.insert("app".to_owned(), name.to_owned());
-
-    // Definition of the deployment. Alternatively, a YAML representation could be used as well.
-    let deployment: Deployment = Deployment {
-        metadata: ObjectMeta {
-            name: Some(name.to_owned()),
-            namespace: Some(namespace.to_owned()),
-            labels: Some(labels.clone()),
-            ..ObjectMeta::default()
-        },
-        spec: Some(DeploymentSpec {
-            replicas: Some(replicas),
-            selector: LabelSelector {
-                match_expressions: None,
-                match_labels: Some(labels.clone()),
-            },
-            template: PodTemplateSpec {
-                spec: Some(PodSpec {
-                    containers: vec![Container {
-                        name: name.to_owned(),
-                        image: Some("inanimate/echo-server:latest".to_owned()),
-                        ports: Some(vec![ContainerPort {
-                            container_port: 8080,
-                            ..ContainerPort::default()
-                        }]),
-                        ..Container::default()
-                    }],
-                    ..PodSpec::default()
-                }),
-                metadata: Some(ObjectMeta {
-                    labels: Some(labels),
-                    ..ObjectMeta::default()
-                }),
-            },
-            ..DeploymentSpec::default()
-        }),
-        ..Deployment::default()
-    };
-
-    // Create the deployment defined above
-    let deployment_api: Api<Deployment> = Api::namespaced(client, namespace);
-    deployment_api
-        .create(&PostParams::default(), &deployment)
-        .await
-}
 /// Deletes an existing deployment.
 ///
 /// # Arguments:
@@ -112,12 +68,35 @@ pub async fn deploy(
 /// - `namespace` - Namespace the existing deployment resides in
 ///
 /// Note: It is assumed the deployment exists for simplicity. Otherwise returns an Error.
-pub async fn delete_topic(client: Client, name: &str, namespace: &str) -> Result<(), Error> {
-    let api: Api<Deployment> = Api::namespaced(client, namespace);
-    api.delete(name, &DeleteParams::default()).await?;
+pub async fn delete_topic(kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>  {
+    // Implement topic creation logic here if using Kafka Admin API
+
+    let admin: AdminClient<DefaultClientContext> = ClientConfig::new()
+        .set(
+            "bootstrap.servers",
+            kafka_topic.spec.bootstrapServer.clone(),
+        )
+        .create()
+        .expect("Admin client creation failed");
+
+
+    let deleteAdmin = &AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(30)));
+
+    let res = admin.delete_topics(&[&*kafka_topic.spec.topic], deleteAdmin);
+
+    match futures::executor::block_on(res) {
+        Ok(results) => {
+            for r in results {
+                match r {
+                    Ok(topic) => println!("Deleted topic: {}", topic),
+                    Err((topic, err)) => println!("Failed to create topic {}: {:?}", topic, err),
+                }
+            }
+        }
+        Err(e) => println!("Admin operation failed: {:?}", e),
+    }
     Ok(())
 }
-
 /// Adds a finalizer record into an `KafkaTopic` kind of resource. If the finalizer already exists,
 /// this action has no effect.
 ///
@@ -127,7 +106,11 @@ pub async fn delete_topic(client: Client, name: &str, namespace: &str) -> Result
 /// - `namespace` - Namespace where the `KafkaTopic` resource with given `name` resides.
 ///
 /// Note: Does not check for resource's existence for simplicity.
-pub async fn finalizer_add(client: Client, name: &str, namespace: &str) -> Result<KafkaTopic, Error> {
+pub async fn finalizer_add(
+    client: Client,
+    name: &str,
+    namespace: &str,
+) -> Result<KafkaTopic, Error> {
     let api: Api<KafkaTopic> = Api::namespaced(client, namespace);
     let finalizer: Value = json!({
         "metadata": {
@@ -147,7 +130,11 @@ pub async fn finalizer_add(client: Client, name: &str, namespace: &str) -> Resul
 /// - `namespace` - Namespace where the `KafkaTopic` resource with given `name` resides.
 ///
 /// Note: Does not check for resource's existence for simplicity.
-pub async fn finalizer_delete(client: Client, name: &str, namespace: &str) -> Result<KafkaTopic, Error> {
+pub async fn finalizer_delete(
+    client: Client,
+    name: &str,
+    namespace: &str,
+) -> Result<KafkaTopic, Error> {
     let api: Api<KafkaTopic> = Api::namespaced(client, namespace);
     let finalizer: Value = json!({
         "metadata": {

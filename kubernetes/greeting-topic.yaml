@@ -5,4 +5,4 @@ metadata:
 spec:
     topic: greetings
     partitions: 10
-    bootstrapServer: kafka-0:9092
+    bootstrapServer: localhost:9092

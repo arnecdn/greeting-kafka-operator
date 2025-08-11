@@ -5,4 +5,4 @@ metadata:
 spec:
     topic: test-topic
     partitions: 1
-    bootstrapServer: kafka-0:9092
+    bootstrapServer: localhost:9092

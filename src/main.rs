@@ -1,13 +1,13 @@
+use crate::kafka_topic_controller::KafkaTopic;
 use futures::stream::StreamExt;
-use std::sync::Arc;
-use kube::{Api, Client, Resource, ResourceExt};
-use kube::runtime::{finalizer, Controller};
 use kube::runtime::controller::Action;
 use kube::runtime::watcher::Config;
-use crate::kafka_topic::KafkaTopic;
+use kube::runtime::Controller;
+use kube::{Api, Client, Resource, ResourceExt};
+use std::sync::Arc;
 use tokio::time::Duration;
 
-mod kafka_topic;
+mod kafka_topic_controller;
 
 #[tokio::main]
 async fn main() {
@@ -29,18 +29,12 @@ async fn main() {
     Controller::new(crd_api.clone(), Config::default())
         .run(reconcile, on_error, context)
         .for_each(|reconciliation_result| async move {
-            match reconciliation_result {
-                    Ok(echo_resource) => {
-                    println!("Reconciliation successful. Resource: {:?}", echo_resource);
-                }
-                Err(reconciliation_err) => {
-                    eprintln!("Reconciliation error: {:?}", reconciliation_err)
-                }
+            if let Err(reconciliation_err) = reconciliation_result {
+                eprintln!("Reconciliation error: {:?}", reconciliation_err)
             }
         })
         .await;
 }
-
 
 /// Context injected with each `reconcile` and `on_error` method invocation.
 struct ContextData {
@@ -69,7 +63,10 @@ enum KafkaTopicAction {
     NoOp,
 }
 
-async fn reconcile(kafkaTopic: Arc<KafkaTopic>, context: Arc<ContextData>) -> Result<Action, Error> {
+async fn reconcile(
+    kafkaTopic: Arc<KafkaTopic>,
+    context: Arc<ContextData>,
+) -> Result<Action, Error> {
     let client: Client = context.client.clone(); // The `Client` is shared -> a clone from the reference is obtained
 
     // The resource of `Echo` kind is required to have a namespace set. However, it is not guaranteed
@@ -99,10 +96,10 @@ async fn reconcile(kafkaTopic: Arc<KafkaTopic>, context: Arc<ContextData>) -> Re
 
             // Apply the finalizer first. If that fails, the `?` operator invokes automatic conversion
             // of `kube::Error` to the `Error` defined in this crate.
-            kafka_topic::finalizer_add(client.clone(), &name, &namespace).await?;
+            kafka_topic_controller::finalizer_add(client.clone(), &name, &namespace).await?;
             // Invoke creation of a Kubernetes built-in resource named deployment with `n` echo service pods.
             // kafka_topic::deploy(client, &name, kafkaTopic.spec.partitions, &namespace).await?;
-            kafka_topic::create_topic(kafkaTopic).await?;
+            kafka_topic_controller::create_topic(kafkaTopic).await?;
             Ok(Action::requeue(Duration::from_secs(10)))
         }
         KafkaTopicAction::Delete => {
@@ -113,11 +110,11 @@ async fn reconcile(kafkaTopic: Arc<KafkaTopic>, context: Arc<ContextData>) -> Re
             // automatically converted into `Error` defined in this crate and the reconciliation is ended
             // with that error.
             // Note: A more advanced implementation would check for the Deployment's existence.
-            kafka_topic::finalizer_delete(client.clone(), &name, &namespace).await?;
-
+            // kafka_topic::finalizer_delete(client.clone(), &name, &namespace).await?;
+            kafka_topic_controller::delete_topic(kafkaTopic).await?;
             // Once the deployment is successfully removed, remove the finalizer to make it possible
             // for Kubernetes to delete the `Echo` resource.
-            kafka_topic::finalizer_delete(client, &name, &namespace).await?;
+            kafka_topic_controller::finalizer_delete(client, &name, &namespace).await?;
             Ok(Action::await_change()) // Makes no sense to delete after a successful delete, as the resource is gone
         }
         // The resource is already in desired state, do nothing and re-check after 10 seconds

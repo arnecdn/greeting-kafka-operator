@@ -17,12 +17,11 @@ use std::time::Duration;
     derive = "PartialEq",
     namespaced
 )]
+#[serde(rename_all = "camelCase")]
 pub struct KafkaTopicSpec {
-    #[serde(default)]
     pub bootstrap_server: String,
     pub topic: String,
     pub partitions: i32,
-    #[serde(default)]
     pub replication_factor: i32,
 }
 

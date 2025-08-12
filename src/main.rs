@@ -10,6 +10,7 @@ mod kafka_topic_controller;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     // First, a Kubernetes client must be obtained using the `kube` crate
     // The client will later be moved to the custom controller
     let kubernetes_client: Client = Client::try_default()

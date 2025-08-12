@@ -41,6 +41,7 @@ pub async fn delete_topic(kafka_topic: Arc<KafkaTopic>) -> Result<(), Error> {
         .set(
             "bootstrap.servers",
             kafka_topic.spec.bootstrap_server.clone(),
+
         )
         .create()
         .expect("Admin client creation failed");

@@ -9,6 +9,7 @@ pub trait KafkaTopicOps {
     async fn create_topic(&self, kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>;
     async fn delete_topic(&self, kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>;
 }
+
 pub struct KafkaAdminClient {
     pub(crate) admin: AdminClient<DefaultClientContext>,
 }
@@ -41,7 +42,7 @@ impl KafkaTopicOps for KafkaAdminClient {
 
     async fn delete_topic(
         &self,
-        kafka_topic: Arc<KafkaTopic>,        
+        kafka_topic: Arc<KafkaTopic>,
     ) -> Result<(), Error> {
         let delete_admin =
             &AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(30)));

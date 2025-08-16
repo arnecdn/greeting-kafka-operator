@@ -5,15 +5,15 @@ use rdkafka::client::DefaultClientContext;
 use std::sync::Arc;
 
 //
-pub trait KafkaTopicClientOps {
+pub trait KafkaTopicOps {
     async fn create_topic(&self, kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>;
     async fn delete_topic(&self, kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>;
 }
-pub struct KafkaTopicClient {
+pub struct KafkaAdminClient {
     pub(crate) admin: AdminClient<DefaultClientContext>,
 }
 
-impl KafkaTopicClientOps for KafkaTopicClient {
+impl KafkaTopicOps for KafkaAdminClient {
     async fn create_topic(
         &self,
         kafka_topic: Arc<KafkaTopic>,

@@ -38,12 +38,12 @@ pub trait KubeClientCrdOps {
 }
 
 pub(crate) struct KubeClient {
-    pub(crate) client: Client,
+    pub(crate) inner_kube_client: Client,
 }
 
 impl KubeClientCrdOps for KubeClient {
     async fn add_finalizer(&self, name: &str, namespace: &str) -> Result<KafkaTopic, kube::Error> {
-        let api: Api<KafkaTopic> = Api::namespaced(self.client.clone(), namespace);
+        let api: Api<KafkaTopic> = Api::namespaced(self.inner_kube_client.clone(), namespace);
         let finalizer: Value = json!({
             "metadata": {
                 "finalizers": ["arnecdn.github.com/finalizer"]
@@ -59,7 +59,7 @@ impl KubeClientCrdOps for KubeClient {
         name: &str,
         namespace: &str,
     ) -> Result<KafkaTopic, kube::Error> {
-        let api: Api<KafkaTopic> = Api::namespaced(self.client.clone(), namespace);
+        let api: Api<KafkaTopic> = Api::namespaced(self.inner_kube_client.clone(), namespace);
         let finalizer: Value = json!({
             "metadata": {
                 "finalizers": null

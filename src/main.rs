@@ -32,7 +32,7 @@ async fn main() {
                 .expect("Failed to create Admin client"),
         },
         kafka_topic_controller::KubeClient {
-            client: kubernetes_client.clone(),
+            inner_kube_client: kubernetes_client.clone(),
         },
     ));
 

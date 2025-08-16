@@ -11,7 +11,7 @@ pub trait KafkaTopicOps {
 }
 
 pub struct KafkaAdminClient {
-    pub(crate) admin: AdminClient<DefaultClientContext>,
+    pub(crate) inner_kafka_client: AdminClient<DefaultClientContext>,
 }
 
 impl KafkaTopicOps for KafkaAdminClient {
@@ -24,7 +24,7 @@ impl KafkaTopicOps for KafkaAdminClient {
             kafka_topic.spec.partitions,
             TopicReplication::Fixed(kafka_topic.spec.replication_factor),
         )];
-        let res = self.admin.create_topics(&new_topics, &AdminOptions::new());
+        let res = self.inner_kafka_client.create_topics(&new_topics, &AdminOptions::new());
 
         match futures::executor::block_on(res) {
             Ok(results) => {
@@ -47,7 +47,7 @@ impl KafkaTopicOps for KafkaAdminClient {
         let delete_admin =
             &AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(30)));
 
-        let res = self.admin.delete_topics(&[&*kafka_topic.spec.topic], delete_admin);
+        let res = self.inner_kafka_client.delete_topics(&[&*kafka_topic.spec.topic], delete_admin);
 
         match futures::executor::block_on(res) {
             Ok(results) => {

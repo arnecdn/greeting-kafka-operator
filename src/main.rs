@@ -26,7 +26,7 @@ async fn main() {
 
     let context = Arc::new(ContextData::new(
         KafkaAdminClient {
-            admin: ClientConfig::new()
+            inner_kafka_client: ClientConfig::new()
                 .set("bootstrap.servers", kafka_broker)
                 .create()
                 .expect("Failed to create Admin client"),

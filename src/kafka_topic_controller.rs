@@ -73,14 +73,14 @@ impl KubeClientCrdOps for KubeClient {
 
 pub(crate) struct ContextData<T: KafkaTopicOps, E: KubeClientCrdOps> {
     kafka_topic_client: T,
-    client: E,
+    kube_client: E,
 }
 
 impl<T: KafkaTopicOps, E: KubeClientCrdOps> ContextData<T, E> {
-    pub fn new(kafka_topic_client: T, client: E) -> Self {
+    pub fn new(kafka_topic_client: T, kube_client: E) -> Self {
         ContextData {
             kafka_topic_client,
-            client,
+            kube_client,
         }
     }
 }
@@ -121,7 +121,7 @@ pub async fn reconcile<T: KafkaTopicOps, E: KubeClientCrdOps>(
             // Finalizer is applied first, as the operator might be shut down and restarted
             // at any time, leaving subresources in intermediate state. This prevents leaks on
             // the `KafkaTopic` resource deletion.
-            context.client.add_finalizer(&name, &namespace).await?;
+            context.kube_client.add_finalizer(&name, &namespace).await?;
 
             context.kafka_topic_client.create_topic(kafka_topic).await?;
             Ok(Action::requeue(Duration::from_secs(10)))
@@ -131,7 +131,7 @@ pub async fn reconcile<T: KafkaTopicOps, E: KubeClientCrdOps>(
             // are deleted, the finalizer is removed and Kubernetes is free to remove the `KafkaTopic` resource.
             context.kafka_topic_client.delete_topic(kafka_topic).await?;
 
-            context.client.delete_finalizer(&name, &namespace).await?;
+            context.kube_client.delete_finalizer(&name, &namespace).await?;
             Ok(Action::await_change())
         }
         // The resource is already in desired state, do nothing and re-check after 10 seconds

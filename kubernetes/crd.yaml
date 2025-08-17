@@ -24,8 +24,6 @@ spec:
                   type: string
                 partitions:
                   type: integer
-                bootstrapServer:
-                  type: string
                 replicationFactor:
                   type: integer
   # either Namespaced or Cluster

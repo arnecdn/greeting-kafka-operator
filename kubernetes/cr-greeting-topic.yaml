@@ -5,5 +5,4 @@ metadata:
 spec:
     topic: greetings
     partitions: 10
-    bootstrapServer: localhost:9092
     replicationFactor: 1

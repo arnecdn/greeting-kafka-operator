@@ -1,5 +1,4 @@
-
-use crate::kafka_topic_helper::{KafkaTopicOps};
+use crate::kafka_topic_helper::KafkaTopicOps;
 use kube::api::{Patch, PatchParams};
 use kube::runtime::controller::Action;
 use kube::{Api, CustomResource, Resource, ResourceExt};
@@ -21,7 +20,6 @@ use std::time::Duration;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct KafkaTopicSpec {
-    pub bootstrap_server: String,
     pub topic: String,
     pub partitions: i32,
     pub replication_factor: i32,
@@ -131,7 +129,10 @@ pub async fn reconcile<T: KafkaTopicOps, E: KubeClientCrdOps>(
             // are deleted, the finalizer is removed and Kubernetes is free to remove the `KafkaTopic` resource.
             context.kafka_topic_client.delete_topic(kafka_topic).await?;
 
-            context.kube_client.delete_finalizer(&name, &namespace).await?;
+            context
+                .kube_client
+                .delete_finalizer(&name, &namespace)
+                .await?;
             Ok(Action::await_change())
         }
         // The resource is already in desired state, do nothing and re-check after 10 seconds
@@ -185,24 +186,16 @@ pub enum Error {
 mod tests {
     use super::*;
     use std::sync::Arc;
-    use tokio::sync::Mutex;
 
     #[tokio::test]
     async fn test_reconcile_create_action() {
-
         struct KafkaTopicCLientMock;
         impl KafkaTopicOps for KafkaTopicCLientMock {
-            async fn create_topic(
-                &self,
-                kafka_topic: Arc<KafkaTopic>,
-            ) -> Result<(), kube_client::Error> {
+            async fn create_topic(&self, _: Arc<KafkaTopic>) -> Result<(), kube_client::Error> {
                 Ok(())
             }
 
-            async fn delete_topic(
-                &self,
-                kafka_topic: Arc<KafkaTopic>,
-            ) -> Result<(), kube_client::Error> {
+            async fn delete_topic(&self, _: Arc<KafkaTopic>) -> Result<(), kube_client::Error> {
                 Ok(())
             }
         }
@@ -214,7 +207,6 @@ mod tests {
                 ..Default::default()
             },
             spec: KafkaTopicSpec {
-                bootstrap_server: "offline:9092".to_string(),
                 topic: "test-topic".to_string(),
                 partitions: 3,
                 replication_factor: 1,
@@ -231,16 +223,16 @@ mod tests {
         impl KubeClientCrdOps for KafkaTopicMock {
             async fn add_finalizer(
                 &self,
-                name: &str,
-                namespace: &str,
+                _: &str,
+                _: &str,
             ) -> Result<KafkaTopic, kube_client::Error> {
                 Ok(self.kafka_topic.clone())
             }
 
             async fn delete_finalizer(
                 &self,
-                name: &str,
-                namespace: &str,
+                _: &str,
+                _: &str,
             ) -> Result<KafkaTopic, kube_client::Error> {
                 Ok(self.kafka_topic.clone())
             }
@@ -248,10 +240,6 @@ mod tests {
 
         let data = ContextData::new(KafkaTopicCLientMock {}, kafka_topic_mock);
         let context = Arc::new(data);
-
-        // Mock helper behavior
-        let create_called = Arc::new(Mutex::new(false));
-        let create_called_clone = create_called.clone();
 
         // Call reconcile
         let result = reconcile(Arc::new(kafka_topic_spec.clone()), context.clone()).await;

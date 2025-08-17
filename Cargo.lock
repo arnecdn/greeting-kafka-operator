@@ -769,6 +769,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "greeting-kafka-operator"
+version = "0.1.0"
+dependencies = [
+ "dotenv",
+ "env_logger",
+ "futures",
+ "k8s-openapi 0.25.0",
+ "kube 1.1.0",
+ "kube-client 1.1.0",
+ "kubernetes-mock",
+ "rdkafka",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.15.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1339,25 +1358,6 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "kafka-topic-operator"
-version = "0.1.0"
-dependencies = [
- "dotenv",
- "env_logger",
- "futures",
- "k8s-openapi 0.25.0",
- "kube 1.1.0",
- "kube-client 1.1.0",
- "kubernetes-mock",
- "rdkafka",
- "schemars",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "tokio",
 ]
 
 [[package]]

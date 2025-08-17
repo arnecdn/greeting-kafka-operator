@@ -1,5 +1,5 @@
-# kafka-topic-operator
-The operator manages Kafka topics in a Kubernetes cluster using a custom resource definition (CRD).
+# Greeting-kafka-operator
+The operator manages Kafka in a Kubernetes cluster using a custom resource definition (CRD) for the Greeting sample application.
 
 ## Prerequisites
 - A Kubernetes cluster ex. minikube, kind, or any cloud provider.

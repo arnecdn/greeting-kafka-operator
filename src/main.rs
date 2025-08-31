@@ -50,7 +50,7 @@ async fn main() {
         })
         .await;
 
-    // if let Err(e) = providers.shutdown().await{
-    //     error!("Failed to shut down: {:?}", e);
-    // }
+    if let Err(e) = providers.shutdown().await{
+        error!("Failed to shut down: {:?}", e);
+    }
 }

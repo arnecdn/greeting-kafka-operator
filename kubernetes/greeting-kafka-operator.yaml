@@ -5,10 +5,9 @@ metadata:
   namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: greeting-kafka-operator
-  namespace: default
 rules:
   - apiGroups: ["arnecdn.github.com"]
     resources: ["kafkatopics"]
@@ -18,15 +17,15 @@ rules:
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: greeting-kafka-operator
-  namespace: default
 subjects:
   - kind: ServiceAccount
     name: greeting-kafka-operator
+    namespace: default
 roleRef:
-  kind: Role
+  kind: ClusterRole
   name: greeting-kafka-operator
   apiGroup: rbac.authorization.k8s.io
 ---

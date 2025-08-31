@@ -22,6 +22,10 @@ serde_json = "1.0"
 schemars = "0.8"
 thiserror = "2"    # Custom Error definitions and convenient error mappings
 rdkafka = "0.29"
-env_logger = "0.11.8"
 kube-client = "1.1.0"
 dotenv = "0.15.0"
+greeting_otel={git = "https://github.com/arnecdn/greeting_otel_lib", version = "0.30.0"}
+tracing = { version = "0.1.40", features = ["std"]}
+tracing-opentelemetry = "0.31.0"
+
+log = "0.4.27"

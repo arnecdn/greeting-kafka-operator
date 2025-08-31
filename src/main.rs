@@ -4,6 +4,7 @@ use kube::{Api, Client};
 use futures::stream::StreamExt;
 use rdkafka::ClientConfig;
 use std::sync::Arc;
+use log::{error, info};
 use crate::kafka_topic_controller::{on_error, reconcile, ContextData, KafkaTopic};
 use crate::kafka_topic_helper::KafkaAdminClient;
 
@@ -12,17 +13,21 @@ mod kafka_topic_helper;
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    info!("Starting kafka-topic controller");
     dotenv().ok();
+    let my_pod_name = std::env::var("APP__KUBE__MY_POD_NAME").expect("Missing my_pod_name");
+    let otel_endpoint = std::env::var("APP__KUBE__MY_POD_NAME").expect("Missing otel endpoint");
 
-    let kafka_broker = std::env::var("APP__KAFKA__BROKER")
-        .expect("Missing Kafka bootstrap.server environment variable");
+    let providers = greeting_otel::init_otel(&otel_endpoint,"greeting-kafka-operator", &my_pod_name).await;
 
     let kubernetes_client = Client::try_default()
         .await
         .expect("Invalid KUBECONFIG environment variable");
 
     let crd_api = Api::<KafkaTopic>::all(kubernetes_client.clone());
+
+    let kafka_broker = std::env::var("APP__KAFKA__BROKER")
+        .expect("Missing Kafka bootstrap.server environment variable");
 
     let context = Arc::new(ContextData::new(
         KafkaAdminClient {
@@ -44,4 +49,8 @@ async fn main() {
             }
         })
         .await;
+
+    // if let Err(e) = providers.shutdown().await{
+    //     error!("Failed to shut down: {:?}", e);
+    // }
 }

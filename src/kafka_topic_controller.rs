@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::instrument;
 
 #[derive(CustomResource, Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
 #[kube(
@@ -91,7 +92,7 @@ enum KafkaTopicAction {
     /// This `KafkaTopic` resource is in desired state and requires no actions to be taken
     NoOp,
 }
-
+// #[instrument(name = "generate_logg")]
 pub async fn reconcile<T: KafkaTopicOps, E: KubeClientCrdOps>(
     kafka_topic: Arc<KafkaTopic>,
     context: Arc<ContextData<T, E>>,

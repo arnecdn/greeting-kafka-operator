@@ -13,15 +13,15 @@ To install the Kafka Topic Operator, you need to apply the custom resource defin
 ### Step 1: Install the Custom Resource Definition (CRD)
 ```bash
 # Install the CRD for Kafka topics
-kubectl apply -f ./kubernetes/crd.yaml
+kubectl apply -f ./kubernetes/greeting-kafka-operator.yaml
 # This step is necessary to define the custom resource that the operator will manage.
 # It allows you to create, update, and delete Kafka topics using Kubernetes resources.
-# You can find the CRD definition in the `kubernetes/crd.yaml` file.
+# You can find the CRD definition in the `kubernetes/greeting-kafka-operator.yaml` file.
 # Make sure to apply it before deploying the operator.
 ```     
 To uninstall the CRD, you can run the following command:
 ```bash
-kubectl delete -f crd.yaml
+kubectl delete -f greeting-kafka-operator.yaml
 
 ```
 ## Managing greeting topic for producer and consumer

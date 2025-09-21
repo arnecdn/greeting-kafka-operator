@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::Duration;
-use log::error;
+use log::{error, info};
 
 #[derive(CustomResource, Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
 #[kube(
@@ -136,10 +136,11 @@ pub async fn reconcile<T: KafkaTopicOps, E: KubeClientCrdOps>(
                 .await?;
             Ok(Action::await_change())
         }
-        // The resource is already in desired state, want to verify in the Kafka cluster
+        // The resource is already in desired state, want to verify Topic in the Kafka cluster
         KafkaTopicAction::NoOp => {
             if context.kafka_topic_client.topic_exists(kafka_topic.clone()).await? == false{
               context.kafka_topic_client.create_topic(kafka_topic.clone()).await?;
+                info!("Created missing topic in Kafka due to expected CR state")
             }
             Ok(Action::requeue(Duration::from_secs(10)))
         }

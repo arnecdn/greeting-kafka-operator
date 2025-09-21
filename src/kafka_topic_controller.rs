@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::Duration;
-
+use log::error;
 
 #[derive(CustomResource, Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
 #[kube(
@@ -171,7 +171,7 @@ pub(crate) fn on_error<T: KafkaTopicOps, E: KubeClientCrdOps>(
     error: &Error,
     _context: Arc<ContextData<T, E>>,
 ) -> Action {
-    eprintln!("Reconciliation error:\n{:?}.\n{:?}", error, echo);
+    error!("Reconciliation error:\n{:?}.\n{:?}", error, echo);
     Action::requeue(Duration::from_secs(5))
 }
 

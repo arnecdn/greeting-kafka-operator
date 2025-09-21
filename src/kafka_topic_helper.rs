@@ -36,11 +36,11 @@ impl KafkaTopicOps for KafkaAdminClient {
                 for r in results {
                     match r {
                         Ok(topic) => info!("Created topic: {}", topic),
-                        Err((topic, err)) => println!("Failed to create topic {}: {:?}", topic, err),
+                        Err((topic, err)) => info!("Failed to create topic {}: {:?}", topic, err),
                     }
                 }
             }
-            Err(e) => println!("Admin operation failed: {:?}", e),
+            Err(e) => error!("Admin operation failed: {:?}", e),
         }
         Ok(())
     }
@@ -58,12 +58,12 @@ impl KafkaTopicOps for KafkaAdminClient {
             Ok(results) => {
                 for r in results {
                     match r {
-                        Ok(topic) => println!("Deleted topic: {}", topic),
-                        Err((topic, err)) => println!("Failed to create topic {}: {:?}", topic, err),
+                        Ok(topic) => info!("Deleted topic: {}", topic),
+                        Err((topic, err)) => error!("Failed to create topic {}: {:?}", topic, err),
                     }
                 }
             }
-            Err(e) => println!("Admin operation failed: {:?}", e),
+            Err(e) => error!("Admin operation failed: {:?}", e),
         }
         Ok(())
     }

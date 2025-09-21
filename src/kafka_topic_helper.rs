@@ -3,11 +3,14 @@ use kube::Error;
 use rdkafka::admin::{AdminClient, AdminOptions, NewTopic, TopicReplication};
 use rdkafka::client::DefaultClientContext;
 use std::sync::Arc;
+use log::{error, info};
+
 
 //
 pub trait KafkaTopicOps {
     async fn create_topic(&self, kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>;
     async fn delete_topic(&self, kafka_topic: Arc<KafkaTopic>) -> Result<(), Error>;
+    async fn topic_exists(&self, kafka_topic: Arc<KafkaTopic>) -> Result<bool, Error>;
 }
 
 pub struct KafkaAdminClient {
@@ -15,6 +18,8 @@ pub struct KafkaAdminClient {
 }
 
 impl KafkaTopicOps for KafkaAdminClient {
+
+
     async fn create_topic(
         &self,
         kafka_topic: Arc<KafkaTopic>,
@@ -30,7 +35,7 @@ impl KafkaTopicOps for KafkaAdminClient {
             Ok(results) => {
                 for r in results {
                     match r {
-                        Ok(topic) => println!("Created topic: {}", topic),
+                        Ok(topic) => info!("Created topic: {}", topic),
                         Err((topic, err)) => println!("Failed to create topic {}: {:?}", topic, err),
                     }
                 }
@@ -61,5 +66,25 @@ impl KafkaTopicOps for KafkaAdminClient {
             Err(e) => println!("Admin operation failed: {:?}", e),
         }
         Ok(())
+    }
+
+    async fn topic_exists(&self, kafka_topic: Arc<KafkaTopic>) -> Result<bool, Error> {
+
+        let res = self.inner_kafka_client.inner()
+            .fetch_metadata(None, std::time::Duration::from_secs(5));
+
+        match res {
+            Ok(metadata) => {
+                if metadata.topics().iter().any(|t| t.name() == kafka_topic.spec.topic) {
+                    Ok(true)
+                } else {
+                    info!("Topic {} not found", kafka_topic.spec.topic);
+                    Ok(false)
+                }
+            }
+            Err(e) => {
+                error!("Topic {} not found. Error: {}", kafka_topic.spec.topic, e);
+                Ok(false) },
+        }
     }
 }

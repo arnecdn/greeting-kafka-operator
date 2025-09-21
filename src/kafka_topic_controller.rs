@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::instrument;
+
 
 #[derive(CustomResource, Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
 #[kube(
@@ -136,8 +136,13 @@ pub async fn reconcile<T: KafkaTopicOps, E: KubeClientCrdOps>(
                 .await?;
             Ok(Action::await_change())
         }
-        // The resource is already in desired state, do nothing and re-check after 10 seconds
-        KafkaTopicAction::NoOp => Ok(Action::requeue(Duration::from_secs(10))),
+        // The resource is already in desired state, want to verify in the Kafka cluster
+        KafkaTopicAction::NoOp => {
+            if context.kafka_topic_client.topic_exists(kafka_topic.clone()).await? == false{
+              context.kafka_topic_client.create_topic(kafka_topic.clone()).await?;
+            }
+            Ok(Action::requeue(Duration::from_secs(10)))
+        }
     }
 }
 
@@ -198,6 +203,10 @@ mod tests {
 
             async fn delete_topic(&self, _: Arc<KafkaTopic>) -> Result<(), kube_client::Error> {
                 Ok(())
+            }
+
+            async fn topic_exists(&self, kafka_topic: Arc<KafkaTopic>) -> Result<bool, kube_client::Error> {
+                Ok(true)
             }
         }
         let kafka_topic_spec = KafkaTopic {

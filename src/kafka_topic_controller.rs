@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::Duration;
 use log::{error, info};
+use rdkafka::error::KafkaError;
 
 #[derive(CustomResource, Serialize, Deserialize, Debug, PartialEq, Clone, JsonSchema)]
 #[kube(
@@ -123,6 +124,7 @@ pub async fn reconcile<T: KafkaTopicOps, E: KubeClientCrdOps>(
             context.kube_client.add_finalizer(&name, &namespace).await?;
 
             context.kafka_topic_client.create_topic(kafka_topic).await?;
+            info!("Created Kafka topic '{}'", name);
             Ok(Action::requeue(Duration::from_secs(10)))
         }
         KafkaTopicAction::Delete => {
@@ -134,6 +136,8 @@ pub async fn reconcile<T: KafkaTopicOps, E: KubeClientCrdOps>(
                 .kube_client
                 .delete_finalizer(&name, &namespace)
                 .await?;
+
+            info!("Deleted Kafka topic '{}'", name);
             Ok(Action::await_change())
         }
         // The resource is already in desired state, want to verify Topic in the Kafka cluster
@@ -189,6 +193,12 @@ pub enum Error {
     UserInputError(String),
 }
 
+impl From<KafkaError> for Error {
+    fn from(error: KafkaError) -> Self {
+        Self::UserInputError(format!("Kafka error: {}", error))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,15 +208,15 @@ mod tests {
     async fn test_reconcile_create_action() {
         struct KafkaTopicCLientMock;
         impl KafkaTopicOps for KafkaTopicCLientMock {
-            async fn create_topic(&self, _: Arc<KafkaTopic>) -> Result<(), kube_client::Error> {
+            async fn create_topic(&self, _: Arc<KafkaTopic>) -> Result<(), KafkaError> {
                 Ok(())
             }
 
-            async fn delete_topic(&self, _: Arc<KafkaTopic>) -> Result<(), kube_client::Error> {
+            async fn delete_topic(&self, _: Arc<KafkaTopic>) -> Result<(), KafkaError> {
                 Ok(())
             }
 
-            async fn topic_exists(&self, kafka_topic: Arc<KafkaTopic>) -> Result<bool, kube_client::Error> {
+            async fn topic_exists(&self, kafka_topic: Arc<KafkaTopic>) -> Result<bool, KafkaError> {
                 Ok(true)
             }
         }

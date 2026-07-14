@@ -6,6 +6,7 @@ use rdkafka::admin::{AdminClient, AdminOptions, NewTopic, TopicReplication};
 use rdkafka::client::DefaultClientContext;
 use rdkafka::error::KafkaError;
 use std::sync::Arc;
+use std::time::Duration;
 
 //
 pub trait KafkaTopicOps {
@@ -25,9 +26,12 @@ impl KafkaTopicOps for KafkaAdminClient {
             kafka_topic.spec.partitions,
             TopicReplication::Fixed(kafka_topic.spec.replication_factor),
         )];
+        let options = AdminOptions::new()
+            .operation_timeout(Some(Duration::from_secs(10)))
+            .request_timeout(Some(Duration::from_secs(10)));
         let res = self
             .inner_kafka_client
-            .create_topics(&new_topics, &AdminOptions::new())
+            .create_topics(&new_topics, &options)
             .await?;
 
         match res.into_iter().next() {
@@ -41,9 +45,12 @@ impl KafkaTopicOps for KafkaAdminClient {
     }
 
     async fn delete_topic(&self, kafka_topic: Arc<KafkaTopic>) -> Result<(), KafkaError> {
+        let options = AdminOptions::new()
+            .operation_timeout(Some(Duration::from_secs(10)))
+            .request_timeout(Some(Duration::from_secs(10)));
         let res = self
             .inner_kafka_client
-            .delete_topics(&[&*kafka_topic.spec.topic], &AdminOptions::new())
+            .delete_topics(&[&*kafka_topic.spec.topic], &options)
             .await?;
 
         match res.into_iter().next() {
@@ -60,7 +67,7 @@ impl KafkaTopicOps for KafkaAdminClient {
         let res = self
             .inner_kafka_client
             .inner()
-            .fetch_metadata(None, std::time::Duration::from_secs(5));
+            .fetch_metadata(Some(&kafka_topic.spec.topic), Duration::from_secs(10));
 
         match res {
             Ok(metadata) => {
@@ -76,10 +83,10 @@ impl KafkaTopicOps for KafkaAdminClient {
             }
             Err(e) => {
                 error!(
-                    "Topic {} not found. KafkaError: {}",
+                    "Failed to fetch Kafka metadata for topic {}. KafkaError: {}",
                     kafka_topic.spec.topic, e
                 );
-                Ok(false)
+                Err(e)
             }
         }
     }

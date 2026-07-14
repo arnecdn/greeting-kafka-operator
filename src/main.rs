@@ -16,7 +16,7 @@ async fn main() {
     info!("Starting kafka-topic controller");
     dotenv().ok();
     let my_pod_name = std::env::var("APP__KUBE__MY_POD_NAME").expect("Missing my_pod_name");
-    let otel_endpoint = std::env::var("APP__KUBE__MY_POD_NAME").expect("Missing otel endpoint");
+    let otel_endpoint = std::env::var("APP__OTEL_COLLECTOR__OLTP_ENDPOINT").expect("Missing otel endpoint");
 
     let providers = greeting_otel::init_otel(&otel_endpoint,"greeting-kafka-operator", &my_pod_name).await;
 
@@ -29,10 +29,34 @@ async fn main() {
     let kafka_broker = std::env::var("APP__KAFKA__BROKER")
         .expect("Missing Kafka bootstrap.server environment variable");
 
+    info!("Kafka bootstrap.servers={}", kafka_broker);
+
+    let mut kafka_config = ClientConfig::new();
+    kafka_config
+        .set("bootstrap.servers", &kafka_broker)
+        .set("request.timeout.ms", "10000")
+        .set("socket.timeout.ms", "10000")
+        .set("api.version.request", "true");
+
+    if let Ok(security_protocol) = std::env::var("APP__KAFKA__SECURITY_PROTOCOL") {
+        kafka_config.set("security.protocol", security_protocol);
+    }
+    if let Ok(sasl_mechanism) = std::env::var("APP__KAFKA__SASL_MECHANISM") {
+        kafka_config.set("sasl.mechanism", sasl_mechanism);
+    }
+    if let Ok(sasl_username) = std::env::var("APP__KAFKA__SASL_USERNAME") {
+        kafka_config.set("sasl.username", sasl_username);
+    }
+    if let Ok(sasl_password) = std::env::var("APP__KAFKA__SASL_PASSWORD") {
+        kafka_config.set("sasl.password", sasl_password);
+    }
+    if let Ok(ca_location) = std::env::var("APP__KAFKA__SSL_CA_LOCATION") {
+        kafka_config.set("ssl.ca.location", ca_location);
+    }
+
     let context = Arc::new(ContextData::new(
         KafkaAdminClient {
-            inner_kafka_client: ClientConfig::new()
-                .set("bootstrap.servers", kafka_broker)
+            inner_kafka_client: kafka_config
                 .create()
                 .expect("Failed to create Admin client"),
         },

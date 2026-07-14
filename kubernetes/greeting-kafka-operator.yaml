@@ -47,7 +47,7 @@ spec:
       serviceAccountName: greeting-kafka-operator
       containers:
         - name: greeting-kafka-operator
-          image: docker.io/arnecdn/greeting-kafka-operator:0.10
+          image: docker.io/arnecdn/greeting-kafka-operator:0.4
           imagePullPolicy: IfNotPresent
           env:
             - name: APP__KAFKA__BROKER

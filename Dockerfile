@@ -20,7 +20,7 @@ WORKDIR /app
 
 # Install host build dependencies.
 #RUN apk add --no-cache clang lld musl-dev git cmake g++ make
-RUN apt-get update && apt-get install -y cmake
+RUN apt-get update && apt-get install -y --no-install-recommends cmake && rm -rf /var/lib/apt/lists/*
 #ENV SQLX_OFFLINE true
 
 
@@ -42,6 +42,9 @@ RUN apt-get update && apt-get install -y cmake
 COPY . .
 RUN cargo build --locked --release
 RUN cp ./target/release/$APP_NAME /usr/bin/server
+RUN libdir="$(dpkg-architecture -qDEB_HOST_MULTIARCH)" && \
+	mkdir -p "/runtime-libs/lib/${libdir}" && \
+	cp -a "/lib/${libdir}/libz.so.1"* "/runtime-libs/lib/${libdir}/"
 
 
 ################################################################################
@@ -50,26 +53,18 @@ RUN cp ./target/release/$APP_NAME /usr/bin/server
 # image from the build stage where the necessary files are copied from the build
 # stage.
 #
-# The example below uses the alpine image as the foundation for running the app.
-# By specifying the "3.18" tag, it will use version 3.18 of alpine. If
-# reproducability is important, consider using a digest
-# (e.g., alpine@sha256:664888ac9cfd28068e062c991ebcff4b4c7307dc8dd4df9e728bedde5c449d91).
-FROM docker.io/rust:1.89-slim-bullseye AS final
-#RUN apt-get update && apt-get install -y cmake strace
+# Using distroless/cc-debian12 for minimal size while keeping libc and openssl
+# support for Kafka operator TLS/network operations. This is ~100x smaller than
+# rust:slim-bullseye while maintaining runtime compatibility.
+FROM gcr.io/distroless/cc-debian12:nonroot AS final
 
-
-# Create a non-privileged user that the app will run under.
-# See https://docs.docker.com/go/dockerfile-user-best-practices/
-ARG UID=10001
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    appuser
-USER appuser
+# Copy the zlib runtime required by rdkafka/libz-sys.
+COPY --from=build /runtime-libs/ /
 
 # Copy the executable from the "build" stage.
-COPY --chown=appuser:appuser --from=build /usr/bin/server /usr/bin
+COPY --chown=nonroot:nonroot --from=build /usr/bin/server /usr/bin/server
+
+USER nonroot:nonroot
+
+# Set the entrypoint to run the server
+ENTRYPOINT ["/usr/bin/server"]

@@ -1,0 +1,11 @@
+target
+.git
+.gitignore
+.dockerignore
+README.md
+Dockerfile
+.DS_Store
+.env
+.env.local
+kubernetes
+

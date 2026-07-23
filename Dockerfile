@@ -9,7 +9,7 @@ ARG APP_NAME=greeting-kafka-operator
 
 ################################################################################
 # Create a base stage with all build-time tooling.
-ARG RUST_VERSION=1.89-bullseye
+ARG RUST_VERSION=1.97-bullseye
 FROM docker.io/rust:${RUST_VERSION} AS chef
 WORKDIR /app
 
